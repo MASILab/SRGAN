@@ -21,6 +21,9 @@ parser.add_argument('--upscale_factor', default=4, type=int, choices=[2, 4, 8],
                     help='super resolution upscale factor')
 parser.add_argument('--num_epochs', default=100, type=int, help='train epoch number')
 
+# train and valid set
+# input_data = pd.read_csv('/nfs/masi/hansencb/CDMRI_2020/challenge_info.csv')
+# print(input_data['ISOTROPIC'])
 
 if __name__ == '__main__':
     opt = parser.parse_args()
@@ -29,10 +32,10 @@ if __name__ == '__main__':
     UPSCALE_FACTOR = opt.upscale_factor
     NUM_EPOCHS = opt.num_epochs
     
-    train_set = TrainDatasetFromFolder('data/DIV2K_train_HR', crop_size=CROP_SIZE, upscale_factor=UPSCALE_FACTOR)
-    val_set = ValDatasetFromFolder('data/DIV2K_valid_HR', upscale_factor=UPSCALE_FACTOR)
+    train_set = TrainDatasetFromFolder('/home/local/VANDERBILT/kanakap/challenge_info.csv', crop_size=CROP_SIZE, upscale_factor=UPSCALE_FACTOR)
+    #val_set = ValDatasetFromFolder('/nfs/masi/kanakap/CDMRI_2020/challenge_info.csv', upscale_factor=UPSCALE_FACTOR)
     train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=64, shuffle=True)
-    val_loader = DataLoader(dataset=val_set, num_workers=4, batch_size=1, shuffle=False)
+    #val_loader = DataLoader(dataset=val_set, num_workers=4, batch_size=1, shuffle=False)
     
     netG = Generator(UPSCALE_FACTOR)
     print('# generator parameters:', sum(param.numel() for param in netG.parameters()))
@@ -58,8 +61,11 @@ if __name__ == '__main__':
         netG.train()
         netD.train()
         for data, target in train_bar:
+            #print(data,target)
             g_update_first = True
-            batch_size = data.size(0)
+            #batch_size = data.size(0)
+            batch_size = 1
+            print(batch_size)
             running_results['batch_sizes'] += batch_size
     
             ############################
