@@ -34,7 +34,7 @@ if __name__ == '__main__':
     
     train_set = TrainDatasetFromFolder('/home/local/VANDERBILT/kanakap/challenge_info.csv', crop_size=CROP_SIZE, upscale_factor=UPSCALE_FACTOR)
     #val_set = ValDatasetFromFolder('/nfs/masi/kanakap/CDMRI_2020/challenge_info.csv', upscale_factor=UPSCALE_FACTOR)
-    train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=64, shuffle=True)
+    train_loader = DataLoader(dataset=train_set, num_workers=2, batch_size=1, shuffle=False)
     #val_loader = DataLoader(dataset=val_set, num_workers=4, batch_size=1, shuffle=False)
     
     netG = Generator(UPSCALE_FACTOR)
@@ -45,6 +45,7 @@ if __name__ == '__main__':
     generator_criterion = GeneratorLoss()
     
     if torch.cuda.is_available():
+        print(netG)
         netG.cuda()
         netD.cuda()
         generator_criterion.cuda()
@@ -61,11 +62,10 @@ if __name__ == '__main__':
         netG.train()
         netD.train()
         for data, target in train_bar:
-            #print(data,target)
+            print(data.shape, target.shape)
             g_update_first = True
-            #batch_size = data.size(0)
-            batch_size = 1
-            print(batch_size)
+            batch_size = data.size(0)
+            print('batch_size',batch_size)
             running_results['batch_sizes'] += batch_size
     
             ############################

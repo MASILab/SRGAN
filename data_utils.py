@@ -119,9 +119,14 @@ class TrainDatasetFromFolder(Dataset):
 
         vol_idx = np.random.randint(0, self.lr_image.shape[3])
         lr_vol = torch.from_numpy(self.lr_image_pad[:,:,:,vol_idx]).unsqueeze(0).float()
+        # normalize the data
+        lr_max = np.percentile(lr_vol, 99.99)
+        lr_vol = lr_vol / lr_max
 
         hr_vol = torch.from_numpy(self.hr_image_pad[:,:,:,vol_idx]).unsqueeze(0).float()
-        print(lr_vol.size(),hr_vol.size())
+        hr_max = np.percentile(hr_vol, 99.99)
+        hr_vol = hr_vol / hr_max
+        print(lr_vol.size(), hr_vol.size())
         #lr_image = np.array(nii_lr.dataobj)
         #self.lr_image = nii_lr.get_fdata()
         #type(lr_image) 
