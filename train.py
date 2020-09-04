@@ -2,6 +2,7 @@ import argparse
 import os
 from math import log10
 
+import torch
 import pandas as pd
 import torch.optim as optim
 import torch.utils.data
@@ -26,6 +27,7 @@ parser.add_argument('--num_epochs', default=100, type=int, help='train epoch num
 # print(input_data['ISOTROPIC'])
 
 if __name__ == '__main__':
+    torch.backends.cudnn.enabled = False
     opt = parser.parse_args()
     
     CROP_SIZE = opt.crop_size
