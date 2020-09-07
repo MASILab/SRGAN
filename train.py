@@ -2,7 +2,7 @@ import argparse
 import os
 from math import log10
 
-import torch
+import nibabel as nib
 import pandas as pd
 import torch.optim as optim
 import torch.utils.data
@@ -20,25 +20,24 @@ parser = argparse.ArgumentParser(description='Train Super Resolution Models')
 parser.add_argument('--crop_size', default=88, type=int, help='training images crop size')
 parser.add_argument('--upscale_factor', default=4, type=int, choices=[2, 4, 8],
                     help='super resolution upscale factor')
-parser.add_argument('--num_epochs', default=100, type=int, help='train epoch number')
+parser.add_argument('--num_epochs', default=30, type=int, help='train epoch number')
 
 # train and valid set
 # input_data = pd.read_csv('/nfs/masi/hansencb/CDMRI_2020/challenge_info.csv')
 # print(input_data['ISOTROPIC'])
 
 if __name__ == '__main__':
-    torch.backends.cudnn.enabled = False
+    #torch.backends.cudnn.enabled = False
     opt = parser.parse_args()
     
     CROP_SIZE = opt.crop_size
     UPSCALE_FACTOR = opt.upscale_factor
     NUM_EPOCHS = opt.num_epochs
-    
+
     train_set = TrainDatasetFromFolder('/home/local/VANDERBILT/kanakap/challenge_info.csv', crop_size=CROP_SIZE, upscale_factor=UPSCALE_FACTOR)
-    #val_set = ValDatasetFromFolder('/nfs/masi/kanakap/CDMRI_2020/challenge_info.csv', upscale_factor=UPSCALE_FACTOR)
+    val_set = ValDatasetFromFolder('/home/local/VANDERBILT/kanakap/validation_info.csv', upscale_factor=UPSCALE_FACTOR)
     train_loader = DataLoader(dataset=train_set, num_workers=2, batch_size=1, shuffle=False)
-    #val_loader = DataLoader(dataset=val_set, num_workers=4, batch_size=1, shuffle=False)
-    
+    val_loader = DataLoader(dataset=val_set, num_workers=2, batch_size=1, shuffle=False)
     netG = Generator(UPSCALE_FACTOR)
     print('# generator parameters:', sum(param.numel() for param in netG.parameters()))
     netD = Discriminator()
@@ -67,7 +66,7 @@ if __name__ == '__main__':
             print(data.shape, target.shape)
             g_update_first = True
             batch_size = data.size(0)
-            print('batch_size',batch_size)
+            #print('batch_size', batch_size)
             running_results['batch_sizes'] += batch_size
     
             ############################
@@ -80,10 +79,15 @@ if __name__ == '__main__':
             if torch.cuda.is_available():
                 z = z.cuda()
             fake_img = netG(z)
+            print('fake_image', fake_img.size())
     
             netD.zero_grad()
             real_out = netD(real_img).mean()
+            print('real_out', real_out)
+
             fake_out = netD(fake_img).mean()
+            print('fake_out', fake_out)
+
             d_loss = 1 - real_out + fake_out
             d_loss.backward(retain_graph=True)
             optimizerD.step()
@@ -141,22 +145,33 @@ if __name__ == '__main__':
                 val_bar.set_description(
                     desc='[converting LR images to SR images] PSNR: %.4f dB SSIM: %.4f' % (
                         valing_results['psnr'], valing_results['ssim']))
-        
+                # print(val_hr_restore.size())
+                # print(val_hr_restore.squeeze(0))
+                # print(hr.data.size())
+                # print(hr.data.cpu().squeeze(0))
+                # print(sr.data.cpu().squeeze(0))
                 val_images.extend(
-                    [display_transform()(val_hr_restore.squeeze(0)), display_transform()(hr.data.cpu().squeeze(0)),
-                     display_transform()(sr.data.cpu().squeeze(0))])
+                    [(val_hr_restore.unsqueeze(0)), (hr.data.cpu().unsqueeze(0)),
+                     (sr.data.cpu().unsqueeze(0))])
+
             val_images = torch.stack(val_images)
-            val_images = torch.chunk(val_images, val_images.size(0) // 15)
-            val_save_bar = tqdm(val_images, desc='[saving training results]')
-            index = 1
-            for image in val_save_bar:
-                image = utils.make_grid(image, nrow=3, padding=5)
-                utils.save_image(image, out_path + 'epoch_%d_index_%d.png' % (epoch, index), padding=5)
-                index += 1
+            print(len(val_images))
+            #val_images = torch.chunk(val_images, val_images.size(0) // 15)
+            #TODO SAVE IMAGES
+            #val_save_bar = tqdm(val_images, desc='[saving training results]')
+            #index = 1
+            # for image in val_save_bar:
+            #     #print(image)
+            #     image = image.detach().cpu().numpy()
+            #     #image = utils.make_grid(image, nrow=3, padding=5)
+            #     #utils.save_image(image, out_path + 'epoch_%d_index_%d.png' % (epoch, index), padding=5)
+            #     image.to_filename(out_path + 'epoch_%d_index_%d.nii.gz' % (epoch, index))
+            #     index += 1
     
         # save model parameters
-        torch.save(netG.state_dict(), 'epochs/netG_epoch_%d_%d.pth' % (UPSCALE_FACTOR, epoch))
-        torch.save(netD.state_dict(), 'epochs/netD_epoch_%d_%d.pth' % (UPSCALE_FACTOR, epoch))
+        #os.mkdir('/home-nfs2/local/VANDERBILT/kanakap/PycharmProjects/CDMRI-SRGAN/SRGAN/epochs')
+        torch.save(netG.state_dict(), '/home/local/VANDERBILT/kanakap/PycharmProjects/CDMRI-SRGAN/SRGAN/epochs/netG_epoch_%d_%d.pth' % (UPSCALE_FACTOR, epoch))
+        torch.save(netD.state_dict(), '/home/local/VANDERBILT/kanakap/PycharmProjects/CDMRI-SRGAN/SRGAN/epochs/netD_epoch_%d_%d.pth' % (UPSCALE_FACTOR, epoch))
         # save loss\scores\psnr\ssim
         results['d_loss'].append(running_results['d_loss'] / running_results['batch_sizes'])
         results['g_loss'].append(running_results['g_loss'] / running_results['batch_sizes'])
@@ -166,7 +181,7 @@ if __name__ == '__main__':
         results['ssim'].append(valing_results['ssim'])
     
         if epoch % 10 == 0 and epoch != 0:
-            out_path = 'statistics/'
+            out_path = '/home/local/VANDERBILT/kanakap/PycharmProjects/CDMRI-SRGAN/SRGAN/statistics/'
             data_frame = pd.DataFrame(
                 data={'Loss_D': results['d_loss'], 'Loss_G': results['g_loss'], 'Score_D': results['d_score'],
                       'Score_G': results['g_score'], 'PSNR': results['psnr'], 'SSIM': results['ssim']},

@@ -28,24 +28,23 @@ class Generator(nn.Module):
     def forward(self, x):
         print(x.shape)
         block1 = self.block1(x)
-        print('block1',block1.size())
+        print('block1', block1.size())
         block2 = self.block2(block1)
-        print('block2',block2.size())
+        print('block2', block2.size())
         #block3 = self.block3(block2)
-        print('block3', block3.size())
+        #print('block3', block3.size())
         #print(block3.size())
         #block4 = self.block4(block3)
         #print(block4.size())
         #block5 = self.block5(block4)
         #print(block5.size())
         #block6 = self.block6(block5)
-        block7 = self.block7(block3)
+        block7 = self.block7(block2)
         print('block7', block7.size())
         block8 = self.block8(block1 + block7)
         print('block8', block8.size())
 
         return (torch.tanh(block8) + 1) / 2
-
 
 class Discriminator(nn.Module):
     def __init__(self):
