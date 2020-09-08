@@ -3,6 +3,7 @@ import os
 from math import log10
 
 import nibabel as nib
+import numpy as np
 import pandas as pd
 import torch.optim as optim
 import torch.utils.data
@@ -62,6 +63,7 @@ if __name__ == '__main__':
     
         netG.train()
         netD.train()
+        gen_image = 1
         for data, target in train_bar:
             print(data.shape, target.shape)
             g_update_first = True
@@ -125,8 +127,8 @@ if __name__ == '__main__':
         with torch.no_grad():
             val_bar = tqdm(val_loader)
             valing_results = {'mse': 0, 'ssims': 0, 'psnr': 0, 'ssim': 0, 'batch_sizes': 0}
-            val_images = []
-            for val_lr, val_hr_restore, val_hr in val_bar:
+            outputs_sr = []
+            for image_name, val_lr, val_hr, pad_idx, orig_shape in val_bar:
                 batch_size = val_lr.size(0)
                 valing_results['batch_sizes'] += batch_size
                 lr = val_lr
@@ -135,6 +137,7 @@ if __name__ == '__main__':
                     lr = lr.cuda()
                     hr = hr.cuda()
                 sr = netG(lr)
+                outputs_sr.append(sr.cpu())
         
                 batch_mse = ((sr - hr) ** 2).data.mean()
                 valing_results['mse'] += batch_mse * batch_size
@@ -150,14 +153,25 @@ if __name__ == '__main__':
                 # print(hr.data.size())
                 # print(hr.data.cpu().squeeze(0))
                 # print(sr.data.cpu().squeeze(0))
-                val_images.extend(
-                    [(val_hr_restore.unsqueeze(0)), (hr.data.cpu().unsqueeze(0)),
-                     (sr.data.cpu().unsqueeze(0))])
+                #val_images.extend(
+                    #[(val_hr_restore.unsqueeze(0)), (hr.data.cpu().unsqueeze(0)),
+                     #(sr.data.cpu().unsqueeze(0))])
 
-            val_images = torch.stack(val_images)
-            print(len(val_images))
+            #val_image = torch.stack(val_images
             #val_images = torch.chunk(val_images, val_images.size(0) // 15)
             #TODO SAVE IMAGES
+            lx, lX, ly, lY, lz, lZ, rx, rX, ry, rY, rz, rZ = pad_idx
+            #out = sr.data.cpu().squeeze()
+            print(len(outputs_sr))
+            out = torch.cat(outputs_sr, dim=0).squeeze()
+            print('OUT_SHAPE', out.shape)
+            out = out.permute(1, 2, 3, 0).detach().numpy()
+            final_out = np.zeros([78, 92, 56, 5])
+            final_out[rx:rX, ry:rY, rz:rZ] = out[lx:lX, ly:lY, lz:lZ]
+            ref = nib.load(image_name)
+            nii = nib.Nifti1Image(final_out, affine=ref.affine, header=ref.header)
+            nib.save(nii, out_path + 'image_result__psnr_%.4f_ssim_%.4f_%d.nii.gz' % (psnr, ssim, gen_image))
+            gen_image += 1
             #val_save_bar = tqdm(val_images, desc='[saving training results]')
             #index = 1
             # for image in val_save_bar:

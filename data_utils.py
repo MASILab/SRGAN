@@ -129,24 +129,10 @@ class TrainDatasetFromFolder(Dataset):
         hr_max = np.percentile(hr_vol, 99.99)
         hr_vol = hr_vol / hr_max
         print(lr_vol.size(), hr_vol.size())
-        #lr_image = np.array(nii_lr.dataobj)
-        #self.lr_image = nii_lr.get_fdata()
-        #type(lr_image) 
-        #self.image, self.pad_idx = self.pad(self.lr_image)
-        #nii_hr = nib.load(self.hr_column[index])
-        #hr_image = np.array(nii_hr.dataobj)
-
-        #print(hr_image.size())
-        #print(lr_image)
-        #if self.is_transform:
-           # lr_sample = self.transform(lr_image)
-            #hr_sample = self.transform(hr_image)
-            #print(lr_sample.size(),hr_sample.size())
-            #print('hi')
         return lr_vol, hr_vol
 
     def __len__(self):
-        return len(self.data) *1344
+        return len(self.data) *5
 
 
 class ValDatasetFromFolder(Dataset):
@@ -162,7 +148,7 @@ class ValDatasetFromFolder(Dataset):
         self.is_transform = True
         self.i = 0
 
-    def __getitem__(self, index):
+    def __getitem__(self, i):
         if self.i % 1344 == 0:
             index = np.random.randint(0, len(self.data))
             # low resolution data
@@ -174,9 +160,11 @@ class ValDatasetFromFolder(Dataset):
             # hr resolution data
             nii_hr = nib.load(self.hr_column[index])
             self.hr_image = nii_hr.get_fdata()
+            self.orig_shape = nii_hr.shape
             self.hr_image_pad, self.pad_idx = pad(self.hr_image)
         self.i += 1
-
+        
+        image_path = self.lr_column[0]
         vol_idx = np.random.randint(0, self.lr_image.shape[3])
         lr_vol = torch.from_numpy(self.lr_image_pad[:, :, :, vol_idx]).unsqueeze(0).float()
         # normalize the data
@@ -187,33 +175,24 @@ class ValDatasetFromFolder(Dataset):
         hr_max = np.percentile(hr_vol, 99.99)
         hr_vol = hr_vol / hr_max
         print(lr_vol.size(), hr_vol.size())
-        return lr_vol, hr_vol, hr_vol
-        # hr_image = Image.open(self.image_filenames[index])
-        # w, h = hr_image.size
-        # crop_size = calculate_valid_crop_size(min(w, h), self.upscale_factor)
-        # lr_scale = Resize(crop_size // self.upscale_factor, interpolation=Image.BICUBIC)
-        # hr_scale = Resize(crop_size, interpolation=Image.BICUBIC)
-        # hr_image = CenterCrop(crop_size)(hr_image)
-        # lr_image = lr_scale(hr_image)
-        # hr_restore_img = hr_scale(lr_image)
-        # return ToTensor()(lr_image), ToTensor()(hr_restore_img), ToTensor()(hr_image)
+        return image_path, lr_vol, hr_vol, self.pad_idx, self.orig_shape
 
     def __len__(self):
-        return len(self.data) * 1344
+        return len(self.data) * 5
 
 
 class TestDatasetFromFolder(Dataset):
     def __init__(self, dataset_dir, upscale_factor):
         super(TestDatasetFromFolder, self).__init__()
-        # self.lr_path = dataset_dir + '/SRF_' + str(upscale_factor) + '/data/'
-        # self.hr_path = dataset_dir + '/SRF_' + str(upscale_factor) + '/target/'
-        # self.upscale_factor = upscale_factor
-        # self.lr_filenames = [join(self.lr_path, x) for x in listdir(self.lr_path) if is_image_file(x)]
-        # self.hr_filenames = [join(self.hr_path, x) for x in listdir(self.hr_path) if is_image_file(x)]
-        # self.image_filenames = [join(dataset_dir, x) for x in listdir(dataset_dir) if is_image_file(x)]
         self.data = pd.read_csv(dataset_dir)
         self.lr_column = self.data['ISOTROPIC']
         print(self.lr_column)
+        # lr reso
+        nii_lr = nib.load(self.lr_column[0])
+        self.lr_image = nii_lr.get_fdata()
+        # pad the surrounding
+        self.lr_image_pad, self.pad_idx = pad(self.lr_image)
+        
         self.hr_column = self.data['TARGET']
         print(self.hr_column)
         self.is_transform = True
@@ -221,12 +200,6 @@ class TestDatasetFromFolder(Dataset):
 
     def __getitem__(self, i):
         vol_idx = i
-        # low resolution data
-        nii_lr = nib.load(self.lr_column[0])
-        self.lr_image = nii_lr.get_fdata()
-        # pad the surrounding
-        self.lr_image_pad, self.pad_idx = pad(self.lr_image)
-
         # hr resolution data
         nii_hr = nib.load(self.hr_column[0])
         self.orig_shape = nii_hr.shape
@@ -256,4 +229,4 @@ class TestDatasetFromFolder(Dataset):
         # return image_name, ToTensor()(lr_image), ToTensor()(hr_restore_img), ToTensor()(hr_image)
 
     def __len__(self):
-        return len(self.data) * 1344 # revisit
+        return 2 #self.lr_image_pad.shape[3]

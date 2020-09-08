@@ -92,9 +92,9 @@ lx, lX, ly, lY, lz, lZ, rx, rX, ry, rY, rz, rZ = pad_idx
 print(len(sr_images))
 out = torch.cat(sr_images, dim=0).squeeze()
 print(out.shape)
-out = out.permute(0, 1, 2).detach().numpy()
-final_out = np.zeros(orig_shape)
-final_out[rx:rX, ry:rY, rz:rZ, 0] = out[lx:lX, ly:lY, lz:lZ]
+out = out.permute(1, 2, 3, 0).detach().numpy()
+final_out = np.zeros([80, 92, 56, 2])
+final_out[rx:rX, ry:rY, rz:rZ] = out[lx:lX, ly:lY, lz:lZ]
 #, rz:rZ]
 ref = nib.load(image_name)
 
