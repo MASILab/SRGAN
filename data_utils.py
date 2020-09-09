@@ -86,20 +86,13 @@ class TrainDatasetFromFolder(Dataset):
         print(self.hr_column)
         self.is_transform = True
         self.i = 0
-        #self.image_filenames = [join(dataset_dir, x) for x in listdir(dataset_dir) if is_image_file(x)]
-        #crop_size = calculate_valid_crop_size(crop_size, upscale_factor)
-        #print(crop_size)
-        #self.hr_transform = train_hr_transform(crop_size)
-        #print(self.hr_transform)
-        #self.lr_transform = train_lr_transform(crop_size, upscale_factor)
-        #print(self.lr_transform)
-
 
     def transform(self, image):
         '''
         This function transforms the 3D image of np.ndarray (z,x,y) to a torch.ShortTensor (B,z,x,y).
         
         '''
+
         image_torch = torch.ShortTensor(image)
         return image_torch
 
@@ -132,7 +125,7 @@ class TrainDatasetFromFolder(Dataset):
         return lr_vol, hr_vol
 
     def __len__(self):
-        return len(self.data) *5
+        return len(self.data) *1344
 
 
 class ValDatasetFromFolder(Dataset):
@@ -150,9 +143,11 @@ class ValDatasetFromFolder(Dataset):
 
     def __getitem__(self, i):
         if self.i % 1344 == 0:
+            print('LENGTH', len(self.data))
             index = np.random.randint(0, len(self.data))
             # low resolution data
             nii_lr = nib.load(self.lr_column[index])
+            self.image_path = self.lr_column[index]
             self.lr_image = nii_lr.get_fdata()
             # pad the surrounding
             self.lr_image_pad, self.pad_idx = pad(self.lr_image)
@@ -164,7 +159,7 @@ class ValDatasetFromFolder(Dataset):
             self.hr_image_pad, self.pad_idx = pad(self.hr_image)
         self.i += 1
         
-        image_path = self.lr_column[0]
+        
         vol_idx = np.random.randint(0, self.lr_image.shape[3])
         lr_vol = torch.from_numpy(self.lr_image_pad[:, :, :, vol_idx]).unsqueeze(0).float()
         # normalize the data
@@ -175,10 +170,10 @@ class ValDatasetFromFolder(Dataset):
         hr_max = np.percentile(hr_vol, 99.99)
         hr_vol = hr_vol / hr_max
         print(lr_vol.size(), hr_vol.size())
-        return image_path, lr_vol, hr_vol, self.pad_idx, self.orig_shape
+        return self.image_path, lr_vol, hr_vol, self.pad_idx, self.orig_shape
 
     def __len__(self):
-        return len(self.data) * 5
+        return len(self.data) * 1344
 
 
 class TestDatasetFromFolder(Dataset):
@@ -218,15 +213,5 @@ class TestDatasetFromFolder(Dataset):
 
         return self.lr_column[0], lr_vol, hr_vol, hr_vol, self.pad_idx, self.orig_shape
 
-        #return {'input': lr_vol,'target': hr_vol, 'pad_idx': self.pad_idx, 'orig_shape': self.orig_shape}
-        #return self.lr_column[index], lr_vol, hr_vol, hr_vol
-        # image_name = self.lr_filenames[index].split('/')[-1]
-        # lr_image = Image.open(self.lr_filenames[index])
-        # w, h = lr_image.size
-        # hr_image = Image.open(self.hr_filenames[index])
-        # hr_scale = Resize((self.upscale_factor * h, self.upscale_factor * w), interpolation=Image.BICUBIC)
-        # hr_restore_img = hr_scale(lr_image)
-        # return image_name, ToTensor()(lr_image), ToTensor()(hr_restore_img), ToTensor()(hr_image)
-
     def __len__(self):
-        return 2 #self.lr_image_pad.shape[3]
+        return self.lr_image_pad.shape[3]

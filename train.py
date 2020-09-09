@@ -37,8 +37,8 @@ if __name__ == '__main__':
 
     train_set = TrainDatasetFromFolder('/home/local/VANDERBILT/kanakap/challenge_info.csv', crop_size=CROP_SIZE, upscale_factor=UPSCALE_FACTOR)
     val_set = ValDatasetFromFolder('/home/local/VANDERBILT/kanakap/validation_info.csv', upscale_factor=UPSCALE_FACTOR)
-    train_loader = DataLoader(dataset=train_set, num_workers=2, batch_size=1, shuffle=False)
-    val_loader = DataLoader(dataset=val_set, num_workers=2, batch_size=1, shuffle=False)
+    train_loader = DataLoader(dataset=train_set, num_workers=1, batch_size=1, shuffle=False)
+    val_loader = DataLoader(dataset=val_set, num_workers=1, batch_size=1, shuffle=False)
     netG = Generator(UPSCALE_FACTOR)
     print('# generator parameters:', sum(param.numel() for param in netG.parameters()))
     netD = Discriminator()
@@ -56,14 +56,14 @@ if __name__ == '__main__':
     optimizerD = optim.Adam(netD.parameters())
     
     results = {'d_loss': [], 'g_loss': [], 'd_score': [], 'g_score': [], 'psnr': [], 'ssim': []}
-    
+    gen_image = 1
     for epoch in range(1, NUM_EPOCHS + 1):
         train_bar = tqdm(train_loader)
         running_results = {'batch_sizes': 0, 'd_loss': 0, 'g_loss': 0, 'd_score': 0, 'g_score': 0}
     
         netG.train()
         netD.train()
-        gen_image = 1
+
         for data, target in train_bar:
             print(data.shape, target.shape)
             g_update_first = True
@@ -120,7 +120,7 @@ if __name__ == '__main__':
                 running_results['g_score'] / running_results['batch_sizes']))
     
         netG.eval()
-        out_path = 'training_results/SRF_' + str(UPSCALE_FACTOR) + '/'
+        out_path = '/home-nfs2/local/VANDERBILT/kanakap/PycharmProjects/CDMRI-SRGAN/SRGAN/training_results/SRF_' + str(UPSCALE_FACTOR) + '/'
         if not os.path.exists(out_path):
             os.makedirs(out_path)
         
@@ -166,11 +166,12 @@ if __name__ == '__main__':
             out = torch.cat(outputs_sr, dim=0).squeeze()
             print('OUT_SHAPE', out.shape)
             out = out.permute(1, 2, 3, 0).detach().numpy()
-            final_out = np.zeros([78, 92, 56, 5])
+            final_out = np.zeros(orig_shape)
             final_out[rx:rX, ry:rY, rz:rZ] = out[lx:lX, ly:lY, lz:lZ]
-            ref = nib.load(image_name)
+            ref = nib.load(image_name[0])
             nii = nib.Nifti1Image(final_out, affine=ref.affine, header=ref.header)
-            nib.save(nii, out_path + 'image_result__psnr_%.4f_ssim_%.4f_%d.nii.gz' % (psnr, ssim, gen_image))
+            print(out_path)
+            nib.save(nii, out_path + 'image_result_%d.nii.gz' % (gen_image))
             gen_image += 1
             #val_save_bar = tqdm(val_images, desc='[saving training results]')
             #index = 1

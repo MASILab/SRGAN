@@ -32,7 +32,7 @@ if torch.cuda.is_available():
 model.load_state_dict(torch.load('/home/local/VANDERBILT/kanakap/PycharmProjects/CDMRI-SRGAN/SRGAN/epochs/' + MODEL_NAME))
 
 test_set = TestDatasetFromFolder('/home/local/VANDERBILT/kanakap/test_info.csv', upscale_factor=UPSCALE_FACTOR)
-test_loader = DataLoader(dataset=test_set, num_workers=4, batch_size=1, shuffle=False)
+test_loader = DataLoader(dataset=test_set, num_workers=1, batch_size=1, shuffle=False)
 test_bar = tqdm(test_loader, desc='[testing benchmark datasets]')
 
 out_path = 'benchmark_results/SRF_' + str(UPSCALE_FACTOR) + '/'
@@ -99,7 +99,7 @@ final_out[rx:rX, ry:rY, rz:rZ] = out[lx:lX, ly:lY, lz:lZ]
 ref = nib.load(image_name)
 
 nii = nib.Nifti1Image(final_out, affine=ref.affine, header=ref.header)
-nib.save(nii, out_path + 'image_result__psnr_%.4f_ssim_%.4f.nii.gz' % (psnr, ssim))
+nib.save(nii, out_path + 'image_result.nii.gz') # % (psnr, ssim))
 
 data_frame = pd.DataFrame(saved_results, results.keys())
 data_frame.to_csv(out_path + 'srf_' + str(UPSCALE_FACTOR) + '_test_results.csv', index_label='DataSet')
